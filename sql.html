@@ -1,10 +1,96 @@
-<p>1. Виведіть мінімальну і максимальну вагу в наборі даних.</p>
-<code>SELECT MIN(weight) AS 'Мінімальна вага', MAX(weight) AS 'Максимальна вага'
+1. Виведіть мінімальну і максимальну вагу в наборі даних.
+
+SELECT MIN(weight) AS 'Мінімальна вага', MAX(weight) AS 'Максимальна вага'
 FROM patients;
-</code>
 
-<p></p>
-<code></code>
 
-<p></p>
-<code></code>
+2. Виведіть ім'я, прізвище та вагу пацієнта з найбільшою вагою. Результатом має бути лише один рядок.
+
+SELECT first_name, last_name, weight
+FROM patients
+ORDER BY weight DESC
+LIMIT 1;
+
+
+3. Виведіть ідентифікатор пацієнта, вагу, зріст та день народження 5ти пацієнтів з найменшою вагою в наборі даних
+
+SELECT patient_id, weight, height, birth_date
+FROM patients
+ORDER BY weight
+LIMIT 5;
+
+
+4. Додайте до попереднього результату кількість років пацієнта, округлену до 2 цифр після коми, на момент його звернення в клініку (admission_date з таблиці admissions).
+
+SELECT p.patient_id, p.weight, p.height, p.birth_date, ROUND((JULIANDAY(a.admission_date) - JULIANDAY(p.birth_date)) / 365, 2) AS age_at_admission
+FROM patients p
+JOIN admissions a ON p.patient_id = a.patient_id
+ORDER BY p.weight
+LIMIT 5;
+
+
+5. Виведіть TOP 5 діагнозів в базі за кількістю випадків прийомів з ними. Для цього нам треба тільки таблиця admissions. Колонку з кількістю випадків прийомів з діагнозом назвіть count_cases.
+
+SELECT diagnosis, COUNT(*) AS count_cases
+FROM admissions
+GROUP BY diagnosis
+ORDER BY count_cases DESC
+LIMIT 5;
+
+
+6. Виведіть всю інформацію з таблиці admissions для останнього в базі прийому (визначаємо за admission_date) з найчастішим діагнозом. Тут треба перевикористати запит з попереднього завдання з невеликими змінами в нього.
+
+SELECT *
+FROM admissions
+WHERE diagnosis = (
+    SELECT diagnosis
+    FROM admissions
+    GROUP BY diagnosis
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+)
+ORDER BY admission_date DESC
+LIMIT 1;
+
+
+7. Напишіть запит, щоб знайти список імен, прізвищ та алергій пацієнтів з міста Hamilton, у яких є алергії (тобто значення allergies не є пустим).
+
+SELECT first_name, last_name, allergies
+FROM patients
+WHERE allergies is NOT NULL AND city = 'Hamilton';
+
+
+8. Кожен прийом коштує 50 доларів для пацієнтів без страхування та 10 доларів для пацієнтів зі страхуванням. Усі пацієнти з парним ідентифікатором пацієнта мають страховку.
+Поставте кожному пацієнту «Yes», якщо він має страхування, і «No», якщо він не має страхування, назвіть цю колонку has_insurance. Загрегуйте дані за значенням  has_insurance та додайте загальну вартість прийомів (admissions) для кожної групи has_insurance.
+
+SELECT 
+    CASE 
+        WHEN MOD(p.patient_id, 2) = 0 THEN 'Yes'
+        ELSE 'No' 
+    END AS has_insurance,
+    SUM(CASE 
+            WHEN MOD(p.patient_id, 2) = 0 THEN 10
+            ELSE 50
+        END) AS total_cost
+FROM patients p
+JOIN admissions a ON p.patient_id = a.patient_id
+GROUP BY has_insurance;
+
+
+9. Вивести унікальні імена пацієнтів, які починаються і закінчуються на «s», разом з кількістю таких пацієнтів. Кількість носіїв імен відсортувати за спаданням (від найбільшої кількості, до найменшої).
+
+SELECT first_name, COUNT(*) AS name_count
+FROM patients
+WHERE first_name LIKE 's%s'
+GROUP BY first_name
+ORDER BY name_count DESC;
+
+
+10. Виведіть кількість пацієнтів чоловіків та пацієнток жінок за провінціями (province_name) так, аби кількість чоловіків була в одній колонкці, а кількість жінок - в іншій. Відсортуйте дані за спаданням кількості чоловіків та відфільтруйте дані так, аби увійшли до вибірки лише ті провінції, за якими є більше 20ти пацієнтів (чоловіків і жінок сумарно). 
+
+SELECT pn.province_name, SUM(gender = 'M') AS male_count, SUM(gender = 'F') AS female_count
+FROM patients p
+JOIN province_names pn ON p.province_id = pn.province_id
+GROUP BY pn.province_name
+HAVING COUNT(*) > 20
+order by male_count desc;
